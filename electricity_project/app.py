@@ -61,35 +61,29 @@ if uploaded_file:
         else:
             # 3. בחירת טווח
             st.subheader("📅 הגדרות ניתוח")
+            analysis_mode = st.radio("בחר טווח:", ["כל התקופה", "טווח תאריכים ספציפי"], horizontal=True)
             
-            # שימוש ב-Key ייחודי עוזר ל-Streamlit לשמור על מצב הרכיב
-            analysis_mode = st.radio(
-                "בחר טווח:", 
-                ["כל התקופה", "טווח תאריכים ספציפי"], 
-                horizontal=True,
-                key="analysis_selector" 
-            )
+            # יצירת עמודת תאריך "נקייה" (בלי שעות) לצורך הסינון בלבד
+            df['only_date'] = df['date_dt'].dt.date
             
-            # הגדרת ה-Dataframe הסופי - כברירת מחדל הוא המלא
             df_final = df.copy()
     
             if analysis_mode == "טווח תאריכים ספציפי":
-                min_d = df['date_dt'].min().date()
-                max_d = df['date_dt'].max().date()
+                min_d = df['only_date'].min()
+                max_d = df['only_date'].max()
                 
                 col1, col2 = st.columns(2)
                 with col1:
-                    start_date = st.date_input("מתאריך", min_d, key="s_date")
+                    start_selection = st.date_input("מתאריך", min_d)
                 with col2:
-                    end_date = st.date_input("עד תאריך", max_d, key="e_date")
+                    end_selection = st.date_input("עד תאריך", max_d)
                 
-                # ביצוע הסינון
-                mask = (df['date_dt'].dt.date >= start_date) & (df['date_dt'].dt.date <= end_date)
+                # הסינון מתבצע עכשיו בין תאריך לתאריך (בלי שעות שיפריעו)
+                mask = (df['only_date'] >= start_selection) & (df['only_date'] <= end_selection)
                 df_final = df.loc[mask].copy()
                 
-                # בדיקה ויזואלית קטנה (תוכל להסיר אחר כך) כדי לוודא שהסינון עבד
-                st.caption(f"מנתח כרגע {len(df_final)} שורות של נתוני צריכה בטווח הנבחר.")
-    
+                # בדיקה ויזואלית קריטית
+                st.write(f"מספר שורות בטווח הנבחר: {len(df_final)}")            
             # 4. חישובים (חייבים לקרות על df_final)
             if df_final.empty:
                 st.warning("⚠️ לא נמצאו נתונים בטווח התאריכים שנבחר. נסה לבחור טווח רחב יותר.")
