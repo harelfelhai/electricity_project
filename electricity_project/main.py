@@ -21,27 +21,30 @@ def load_electricity_data(file_path):
         return None
 
 def calculate_plan_cost(df, plan, base_price=0.60):
-    discount = plan['discount_pct'] / 100
-    # חשוב: אנחנו עובדים רק על ה-df שמתקבל כארגומנט (שהוא df_final המסונן)
+    discount = float(plan['discount_pct']) / 100
+    
+    # וידוא שכל עמודת הצריכה היא מסוג מספר
+    usage = pd.to_numeric(df['צריכה/ייצור בקוט"ש'], errors='coerce').fillna(0)
     
     if plan['type'] == 'fixed':
-        # הנחה קבועה על כל הקוט"ש בטווח המסונן
-        return (df['צריכה/ייצור בקוט"ש'] * base_price * (1 - discount)).sum()
+        # חישוב הנחה קבועה
+        return (usage * base_price * (1 - discount)).sum()
     else:
-        # הנחה מבוססת שעות
         start, end = plan['start_hour'], plan['end_hour']
         
-        def apply_rate(row):
-            # בדיקה אם השעה בטווח (מטפל גם בטווחים שחוצים חצות)
+        # פונקציית עזר פנימית לחישוב לפי שעה
+        def get_rate(row_hour):
             if start < end:
-                in_range = start <= row['hour'] < end
-            else: # טווח כמו 22:00 עד 06:00
-                in_range = row['hour'] >= start or row['hour'] < end
-            
-            price = base_price * (1 - discount) if in_range else base_price
-            return row['צריכה/ייצור בקוט"ש'] * price
-            
-        return df.apply(apply_rate, axis=1).sum()
+                in_range = start <= row_hour < end
+            else: # למסלולי לילה שחוצים את חצות
+                in_range = row_hour >= start or row_hour < end
+            return base_price * (1 - discount) if in_range else base_price
+
+        # יצירת וקטור של מחירים לפי שעות
+        rates = df['hour'].apply(get_rate)
+        
+        # מכפילים צריכה במחיר (שניהם עכשיו בוודאות מספרים)
+        return (usage * rates).sum()
         
 # --- חלק ההרצה ---
 csv_path = os.path.join('data', 'usage_data.csv')
