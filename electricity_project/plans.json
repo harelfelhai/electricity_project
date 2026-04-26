@@ -1,0 +1,82 @@
+[
+    {
+        "company": "בזק אנרג'י",
+        "plan_name": "הנחה קבועה",
+        "discount_pct": 7,
+        "type": "fixed",
+        "start_hour": 0,
+        "end_hour": 24
+    },
+    {
+        "company": "בזק אנרג'י",
+        "plan_name": "חוסכים בלילה",
+        "discount_pct": 20,
+        "type": "range",
+        "start_hour": 23,
+        "end_hour": 7
+    },
+    {
+        "company": "סלקום אנרג'י",
+        "plan_name": "הנחה קבועה",
+        "discount_pct": 5,
+        "type": "fixed",
+        "start_hour": 0,
+        "end_hour": 24
+    },
+    {
+        "company": "סלקום אנרג'י",
+        "plan_name": "חוסכים בלילה",
+        "discount_pct": 18,
+        "type": "range",
+        "start_hour": 23,
+        "end_hour": 7
+    },
+    {
+        "company": "סלקום אנרג'י",
+        "plan_name": "עובדים מהבית",
+        "discount_pct": 15,
+        "type": "range",
+        "start_hour": 8,
+        "end_hour": 17
+    },
+    {
+        "company": "אלקטרה פאוור",
+        "plan_name": "מסלול Power",
+        "discount_pct": 5,
+        "type": "fixed",
+        "start_hour": 0,
+        "end_hour": 24
+    },
+    {
+        "company": "אלקטרה פאוור",
+        "plan_name": "מסלול הייטק (לילה)",
+        "discount_pct": 20,
+        "type": "range",
+        "start_hour": 23,
+        "end_hour": 7
+    },
+    {
+        "company": "פזגז חשמל",
+        "plan_name": "הנחה קבועה",
+        "discount_pct": 7,
+        "type": "fixed",
+        "start_hour": 0,
+        "end_hour": 24
+    },
+    {
+        "company": "פרטנר פאוור",
+        "plan_name": "הנחה קבועה",
+        "discount_pct": 5,
+        "type": "fixed",
+        "start_hour": 0,
+        "end_hour": 24
+    },
+    {
+        "company": "הוט אנרג'י",
+        "plan_name": "הנחה קבועה",
+        "discount_pct": 5,
+        "type": "fixed",
+        "start_hour": 0,
+        "end_hour": 24
+    }
+]
