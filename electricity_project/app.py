@@ -71,6 +71,8 @@ if uploaded_file:
             
             # המרה חסינה לזמן
             df['date_dt'] = pd.to_datetime(df['full_dt_str'], dayfirst=True, errors='coerce')
+            # המרה חסינה למספרים - מנקה גרשיים ופסיקים אם יש
+            df[usage_col] = df[usage_col].astype(str).str.replace('"', '').str.replace(',', '')
             df['usage'] = pd.to_numeric(df[usage_col], errors='coerce')
             
             # הסרת שורות ריקות או כאלו שלא הומרו (כמו שורות סיכום בסוף)
@@ -102,7 +104,7 @@ if uploaded_file:
 
                 # --- שלב 4: חישובים ---
                 if not df_final.empty:
-                    current_cost = df_final['usage'].sum() * 0.60
+                    current_cost = float(df_final['usage'].sum()) * 0.60
                     results = []
                     for plan in PLANS:
                         # חשוב לוודא שפונקציית החישוב משתמשת בשם העמודה הנכון ('usage')
