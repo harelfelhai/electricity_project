@@ -44,7 +44,7 @@ if uploaded_file:
         # 1. טעינה ראשונית של הקובץ
         df = pd.read_csv(uploaded_file, skiprows=10)
         df.columns = [col.strip() for col in df.columns]
-        
+        st.write(df.head())
         # 2. המרת סוגי נתונים (קריטי לסינון תאריכים)
         # ניסיון המרה גמיש יותר - מטפל בפורמט התאריך והשעה של חברת החשמל
         df['date_dt'] = pd.to_datetime(df[date_col], dayfirst=True, errors='coerce')
