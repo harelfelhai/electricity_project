@@ -49,26 +49,32 @@ if uploaded_file:
         date_col = 'מועד תחילת הפעימה'
         
         # 2. המרת נתונים וניקוי שורות ריקות/שגויות
-        # 2. המרת נתונים וניקוי שורות ריקות/שגויות
+        # ניקוי בסיסי של העמודה
         df[date_col] = df[date_col].astype(str).str.strip()
         
-        # המרה חסינה לתאריכים
+        # ניסיון המרה ראשון - פורמט סטנדרטי (יום ראשון)
         df['date_dt'] = pd.to_datetime(df[date_col], dayfirst=True, errors='coerce')
         
-        # אם ההמרה נכשלה, ננסה ניקוי תווים מיוחדים
+        # אם זה נכשל, ננסה לנקות תווים נסתרים ולנסות שוב
         if df['date_dt'].isna().all():
+            # השורה הזו מנקה תווים שהם לא מספרים, לוכסנים או נקודתיים
             clean_date_str = df[date_col].str.replace(r'[^\d/ :.-]', '', regex=True)
             df['date_dt'] = pd.to_datetime(clean_date_str, dayfirst=True, errors='coerce')
 
+        # המרת עמודת הצריכה למספר
         df['צריכה/ייצור בקוט"ש'] = pd.to_numeric(df[target_col], errors='coerce')
         
-        # הסרת שורות ריקות
+        # הסרת שורות שבהן התאריך או הצריכה לא תקינים
         df = df.dropna(subset=['date_dt', 'צריכה/ייצור בקוט"ש'])
         
-        # יצירת עמודות עזר
-        df['hour'] = df['date_dt'].dt.hour
-        df['only_date'] = df['date_dt'].dt.date
-
+        # יצירת עמודות עזר מהתאריכים שזיהינו
+        if not df.empty:
+            df['hour'] = df['date_dt'].dt.hour
+            df['only_date'] = df['date_dt'].dt.date
+            
+            # הדפסה לדיבאג (תוכל לראות את זה באתר)
+            st.write(f"הצלחנו לקרוא {len(df)} שורות.")
+            st.write(f"דוגמה לתאריך שזוהה: {df['only_date'].iloc[0]}")
         # בדיקה אם נשארו נתונים אחרי הניקוי
         if df.empty:
             st.error("לא נמצאו נתוני צריכה תקינים. וודא שהעמודות קיימות בקובץ.")
