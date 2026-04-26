@@ -49,12 +49,26 @@ if uploaded_file:
         date_col = 'מועד תחילת הפעימה'
         
         # 2. המרת נתונים וניקוי שורות ריקות/שגויות
+        # ניקוי אגרסיבי של רווחים ותווים נסתרים מהתאריך
+        df[date_col] = df[date_col].astype(str).str.strip()
+        
+        # המרה עם הגדרה מפורשת שיום מופיע ראשון (dayfirst=True)
+        # errors='coerce' יהפוך שורות בעייתיות ל-NaT
         df['date_dt'] = pd.to_datetime(df[date_col], dayfirst=True, errors='coerce')
+        
+        # אם הכל הפך ל-NaT, ננסה ניקוי תווים מיוחדים (לפעמים יש סימנים בלתי נראים ב-CSV)
+        if df['date_dt'].isna().all():
+            clean_date_str = df[date_col].str.replace(r'[^\d/ :.-]', '', regex=True)
+            df['date_dt'] = pd.to_datetime(clean_date_str, dayfirst=True, errors='coerce')
+
         df['צריכה/ייצור בקוט"ש'] = pd.to_numeric(df[target_col], errors='coerce')
         
-        # כאן אנחנו מוודאים שאנחנו עובדים רק עם שורות תקינות
+        # ניקוי שורות ריקות
         df = df.dropna(subset=['date_dt', 'צריכה/ייצור בקוט"ש'])
+        
+        # יצירת עמודות עזר
         df['hour'] = df['date_dt'].dt.hour
+        df['only_date'] = df['date_dt'].dt.date
         
         if df.empty:
             st.error("לא נמצאו נתוני צריכה תקינים בקובץ. וודא שהעלית את הקובץ המקורי של חברת החשמל.")
@@ -68,22 +82,31 @@ if uploaded_file:
             
             df_final = df.copy()
             st.write(f"התאריך המוקדם ביותר שנמצא: {df_final['only_date'].min()}")
+            if df.empty:
+            st.error("לא נמצאו נתוני צריכה תקינים. וודא שהעמודות 'מועד תחילת הפעימה' ו-'צריכה/ייצור בקוט\"ש' קיימות.")
+        else:
+            # 3. בחירת טווח
+            st.subheader("📅 הגדרות ניתוח")
+            analysis_mode = st.radio("בחר טווח:", ["כל התקופה", "טווח תאריכים ספציפי"], horizontal=True)
+            
+            # שליפת המינימום והמקסימום האמיתיים מהקובץ
+            actual_min = df['only_date'].min()
+            actual_max = df['only_date'].max()
+            
+            df_final = df.copy()
+
             if analysis_mode == "טווח תאריכים ספציפי":
-                min_d = df['only_date'].min()
-                max_d = df['only_date'].max()
-                
                 col1, col2 = st.columns(2)
                 with col1:
-                    start_selection = st.date_input("מתאריך", min_d)
+                    start_selection = st.date_input("מתאריך", actual_min, min_value=actual_min, max_value=actual_max)
                 with col2:
-                    end_selection = st.date_input("עד תאריך", max_d)
+                    end_selection = st.date_input("עד תאריך", actual_max, min_value=actual_min, max_value=actual_max)
                 
-                # הסינון מתבצע עכשיו בין תאריך לתאריך (בלי שעות שיפריעו)
+                # סינון על בסיס תאריכים בלבד
                 mask = (df['only_date'] >= start_selection) & (df['only_date'] <= end_selection)
                 df_final = df.loc[mask].copy()
                 
-                # בדיקה ויזואלית קריטית
-                st.write(f"מספר שורות בטווח הנבחר: {len(df_final)}")            
+                st.caption(f"מנתח {len(df_final)} שורות בטווח שבין {start_selection} ל-{end_selection}")            
             # 4. חישובים (חייבים לקרות על df_final)
             if df_final.empty:
                 st.warning("⚠️ לא נמצאו נתונים בטווח התאריכים שנבחר. נסה לבחור טווח רחב יותר.")
