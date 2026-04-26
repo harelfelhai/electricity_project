@@ -46,7 +46,13 @@ if uploaded_file:
         df.columns = [col.strip() for col in df.columns]
         
         # 2. המרת סוגי נתונים (קריטי לסינון תאריכים)
-        df['date_dt'] = pd.to_datetime(df['מועד תחילת הפעימה'], dayfirst=True)
+        # ניסיון המרה גמיש יותר - מטפל בפורמט התאריך והשעה של חברת החשמל
+        df['date_dt'] = pd.to_datetime(df[date_col], dayfirst=True, errors='coerce')
+        
+        # אם יש שורות שלא הומרו, ננסה לנקות תווים מיותרים ולנסות שוב
+        if df['date_dt'].isna().any():
+             df[date_col] = df[date_col].astype(str).str.replace(r'[^\d/ :]', '', regex=True)
+             df['date_dt'] = pd.to_datetime(df[date_col], dayfirst=True, errors='coerce')
         df['צריכה/ייצור בקוט"ש'] = pd.to_numeric(df['צריכה/ייצור בקוט"ש'], errors='coerce')
         df = df.dropna(subset=['צריכה/ייצור בקוט"ש'])
         df['hour'] = df['date_dt'].dt.hour
