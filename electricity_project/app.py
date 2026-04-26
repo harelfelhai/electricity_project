@@ -67,7 +67,7 @@ if uploaded_file:
             df['only_date'] = df['date_dt'].dt.date
             
             df_final = df.copy()
-    
+            st.write(f"התאריך המוקדם ביותר שנמצא: {df_final['only_date'].min()}")
             if analysis_mode == "טווח תאריכים ספציפי":
                 min_d = df['only_date'].min()
                 max_d = df['only_date'].max()
