@@ -42,21 +42,15 @@ uploaded_file = st.file_uploader("מעלים כאן את קובץ ה-CSV מחב�
 if uploaded_file:
     try:
         # --- שלב 1: זיהוי אוטומטי של תחילת הטבלה ---
-        # קוראים את הקובץ כטקסט פשוט כדי למצוא את שורת הכותרת
         content = uploaded_file.getvalue().decode('utf-8').splitlines()
-        
         header_row_index = 0
         for i, line in enumerate(content):
-            # מחפשים שורה שמכילה את מילות המפתח של הכותרת
             if "תאריך" in line and "מועד תחילת הפעימה" in line:
                 header_row_index = i
                 break
         
-        # עכשיו טוענים את ה-DataFrame החל מהשורה שמצאנו
-        uploaded_file.seek(0) # מחזירים את הקובץ להתחלה לקריאה מחדש
+        uploaded_file.seek(0)
         df = pd.read_csv(uploaded_file, skiprows=header_row_index)
-        
-        # ניקוי שמות עמודות
         df.columns = [col.strip() for col in df.columns]
         
         # --- שלב 2: זיהוי עמודות והמרת נתונים ---
@@ -64,22 +58,19 @@ if uploaded_file:
         time_col = 'מועד תחילת הפעימה'
         usage_col = 'צריכה/ייצור בקוט"ש'
         
-        # וידוא שהעמודות קיימות
         if date_col in df.columns and time_col in df.columns:
-            # חיבור תאריך ושעה וניקוי רווחים
+            # חיבור תאריך ושעה
             df['full_dt_str'] = df[date_col].astype(str).str.strip() + ' ' + df[time_col].astype(str).str.strip()
-            
-            # המרה חסינה לזמן
             df['date_dt'] = pd.to_datetime(df['full_dt_str'], dayfirst=True, errors='coerce')
-            # המרה חסינה למספרים - מנקה גרשיים ופסיקים אם יש
-            df[usage_col] = df[usage_col].astype(str).str.replace('"', '').str.replace(',', '')
+            
+            # תיקון השגיאה: ניקוי תווים לא מספריים והמרה למספר
+            df[usage_col] = df[usage_col].astype(str).str.replace('"', '').str.replace(',', '').str.strip()
             df['usage'] = pd.to_numeric(df[usage_col], errors='coerce')
             
-            # הסרת שורות ריקות או כאלו שלא הומרו (כמו שורות סיכום בסוף)
             df = df.dropna(subset=['date_dt', 'usage'])
             
             if df.empty:
-                st.error("לא נמצאו נתונים תקינים לאחר ניקוי הקובץ.")
+                st.error("לא נמצאו נתונים תקינים. וודא שהקובץ מכיל נתוני צריכה.")
             else:
                 df['hour'] = df['date_dt'].dt.hour
                 df['only_date'] = df['date_dt'].dt.date
@@ -98,21 +89,24 @@ if uploaded_file:
                         s_date = st.date_input("מתאריך", actual_min, min_value=actual_min, max_value=actual_max)
                     with col2:
                         e_date = st.date_input("עד תאריך", actual_max, min_value=actual_min, max_value=actual_max)
-                    
                     mask = (df['only_date'] >= s_date) & (df['only_date'] <= e_date)
                     df_final = df.loc[mask].copy()
 
                 # --- שלב 4: חישובים ---
                 if not df_final.empty:
-                    current_cost = float(df_final['usage'].sum()) * 0.60
+                    # שימוש ב-float() כדי למנוע את שגיאת ה-String Multiply
+                    total_kwh = float(df_final['usage'].sum())
+                    current_cost = total_kwh * 0.60
+                    
                     results = []
                     for plan in PLANS:
-                        # חשוב לוודא שפונקציית החישוב משתמשת בשם העמודה הנכון ('usage')
-                        cost = calculate_plan_cost(df_final.rename(columns={'usage': 'צריכה/ייצור בקוט"ש'}), plan)
+                        # שים לב שאנחנו שולחים לחישוב את df_final עם שם העמודה המקורי שהפונקציה מצפה לו
+                        df_for_calc = df_final.rename(columns={'usage': 'צריכה/ייצור בקוט"ש'})
+                        cost = calculate_plan_cost(df_for_calc, plan)
                         results.append({
                             "חברה": plan['company'], 
                             "מסלול": plan['plan_name'], 
-                            "חיסכון": current_cost - cost
+                            "חיסכון": current_cost - float(cost)
                         })
                     
                     res_df = pd.DataFrame(results).sort_values(by="חיסכון", ascending=False)
@@ -120,17 +114,12 @@ if uploaded_file:
                     
                     st.divider()
                     st.success(f"### מצאנו לך חיסכון של ₪{best_plan['חיסכון']:.2f}!")
-                    st.info(f"המסלול המשתלם ביותר: **{best_plan['חברה']} - {best_plan['מסלול']}**")
+                    st.info(f"המסלול המומלץ: **{best_plan['חברה']} - {best_plan['מסלול']}**")
                     
-                    # הצגת פירוט וטופס לידים (המשך הקוד שלך...)
                     with st.expander("ראה פירוט של כל החברות"):
                         st.dataframe(res_df, use_container_width=True, hide_index=True)
-                    
-                    # טופס לידים
-                    st.divider()
-                    # ... כאן מגיע הקוד של טופס הלידים שכתבנו קודם ...
         else:
-            st.error("פורמט הקובץ אינו מזוהה. וודא שהעמודות 'תאריך' ו-'מועד תחילת הפעימה' קיימות.")
+            st.error("לא נמצאו עמודות 'תאריך' ו-'מועד תחילת הפעימה'.")
 
     except Exception as e:
         st.error(f"שגיאה בעיבוד הקובץ: {e}")
