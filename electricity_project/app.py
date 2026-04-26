@@ -47,14 +47,14 @@ if uploaded_file:
         st.write(df.head())
         # 2. המרת סוגי נתונים (קריטי לסינון תאריכים)
         # ניסיון המרה גמיש יותר - מטפל בפורמט התאריך והשעה של חברת החשמל
+        # המרת תאריכים - errors='coerce' הופך טעויות ל-None במקום לקרוס
         df['date_dt'] = pd.to_datetime(df[date_col], dayfirst=True, errors='coerce')
+        df['צריכה/ייצור בקוט"ש'] = pd.to_numeric(df[target_col], errors='coerce')
         
-        # אם יש שורות שלא הומרו, ננסה לנקות תווים מיותרים ולנסות שוב
-        if df['date_dt'].isna().any():
-             df[date_col] = df[date_col].astype(str).str.replace(r'[^\d/ :]', '', regex=True)
-             df['date_dt'] = pd.to_datetime(df[date_col], dayfirst=True, errors='coerce')
-        df['צריכה/ייצור בקוט"ש'] = pd.to_numeric(df['צריכה/ייצור בקוט"ש'], errors='coerce')
-        df = df.dropna(subset=['צריכה/ייצור בקוט"ש'])
+        # השורה הקריטית: אנחנו משאירים רק את השורות שהצלחנו להמיר באמת
+        df = df.dropna(subset=['date_dt', 'צריכה/ייצור בקוט"ש'])
+        
+        # רק עכשיו, כשיש לנו רק נתונים תקינים, נשלוף את השעה
         df['hour'] = df['date_dt'].dt.hour
         
         # 3. כאן נכנס קוד בחירת טווח הזמנים (החדש):
