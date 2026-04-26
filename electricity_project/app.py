@@ -41,25 +41,61 @@ uploaded_file = st.file_uploader("מעלים כאן את קובץ ה-CSV מחב�
 
 if uploaded_file:
     try:
-        # עיבוד מהיר
+        # 1. טעינה ראשונית של הקובץ
         df = pd.read_csv(uploaded_file, skiprows=10)
         df.columns = [col.strip() for col in df.columns]
+        
+        # 2. המרת סוגי נתונים (קריטי לסינון תאריכים)
+        df['date_dt'] = pd.to_datetime(df['מועד תחילת הפעימה'], dayfirst=True)
         df['צריכה/ייצור בקוט"ש'] = pd.to_numeric(df['צריכה/ייצור בקוט"ש'], errors='coerce')
         df = df.dropna(subset=['צריכה/ייצור בקוט"ש'])
-        df['hour'] = df['מועד תחילת הפעימה'].str.split(':').str[0].astype(int)
+        df['hour'] = df['date_dt'].dt.hour
         
-        current_cost = df['צריכה/ייצור בקוט"ש'].sum() * 0.60
+        # 3. כאן נכנס קוד בחירת טווח הזמנים (החדש):
+        st.subheader("הגדרות ניתוח")
+        analysis_mode = st.radio(
+            "בחר את טווח הניתוח:",
+            ["ניתוח כלל המידע שהועלה", "ניתוח טווח תאריכים ספציפי"],
+            horizontal=True
+        )
+
+        # יצירת משתנה שיכיל את הנתונים לעיבוד (ברירת מחדל: הכל)
+        df_filtered = df 
+
+        if analysis_mode == "ניתוח טווח תאריכים ספציפי":
+            min_date = df['date_dt'].min().date()
+            max_date = df['date_dt'].max().date()
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                start_date = st.date_input("תאריך התחלה", min_date, min_value=min_date, max_value=max_date)
+            with col2:
+                end_date = st.date_input("תאריך סיום", max_date, min_value=min_date, max_value=max_date)
+            
+            # ביצוע הסינון בפועל
+            mask = (df['date_dt'].dt.date >= start_date) & (df['date_dt'].dt.date <= end_date)
+            df_filtered = df.loc[mask]
+            
+            if df_filtered.empty:
+                st.warning("לא נמצאו נתונים בטווח התאריכים הנבחר. מציג את כל המידע.")
+                df_filtered = df
+
+        # 4. ביצוע החישובים על בסיס הנתונים המסוננים (df_filtered)
+        total_usage = df_filtered['צריכה/ייצור בקוט"ש'].sum()
+        current_cost = total_usage * 0.60
         
+        # חישוב כל מסלול מול הנתונים המסוננים
         results = []
         for plan in PLANS:
-            new_cost = calculate_plan_cost(df, plan)
-            results.append({"חברה": plan['company'], "מסלול": plan['plan_name'], "חיסכון": current_cost - new_cost})
-        
-        res_df = pd.DataFrame(results).sort_values(by="חיסכון", ascending=False)
-        best_plan = res_df.iloc[0]
-
+            new_cost = calculate_plan_cost(df_filtered, plan) # שימוש ב-df_filtered!
+            results.append({
+                "חברה": plan['company'], 
+                "מסלול": plan['plan_name'], 
+                "חיסכון": current_cost - new_cost
+            })
         # הצגת התוצאה כ-Card בולט
-        st.success(f"### מצאנו לך חיסכון של ₪{best_plan['חיסכון']:.2f}!")
+        res_df = pd.DataFrame(results).sort_values(by="חיסכון", ascending=False)
+        st.success(f"### בטווח שנבחר, מצאנו לך חיסכון של ₪{res_df.iloc[0]['חיסכון']:.2f}!")
         st.write(f"המסלול המומלץ: **{best_plan['חברה']} - {best_plan['מסלול']}**")
 
         st.divider()
