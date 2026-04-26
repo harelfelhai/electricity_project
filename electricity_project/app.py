@@ -59,23 +59,48 @@ if uploaded_file:
         if df.empty:
             st.error("לא נמצאו נתוני צריכה תקינים בקובץ. וודא שהעלית את הקובץ המקורי של חברת החשמל.")
         else:
-            # 3. בחירת טווח (רק אם הקובץ תקין)
-            st.subheader("📅 הגדרות ניתוח")
-            analysis_mode = st.radio("בחר טווח:", ["כל התקופה", "טווח תאריכים ספציפי"], horizontal=True)
-            
-            df_final = df
-            if analysis_mode == "טווח תאריכים ספציפי":
-                start_date = st.date_input("מתאריך", df['date_dt'].min().date())
-                end_date = st.date_input("עד תאריך", df['date_dt'].max().date())
-                mask = (df['date_dt'].dt.date >= start_date) & (df['date_dt'].dt.date <= end_date)
-                df_final = df.loc[mask]
+            # 3. בחירת טווח
+        st.subheader("📅 הגדרות ניתוח")
+        
+        # שימוש ב-Key ייחודי עוזר ל-Streamlit לשמור על מצב הרכיב
+        analysis_mode = st.radio(
+            "בחר טווח:", 
+            ["כל התקופה", "טווח תאריכים ספציפי"], 
+            horizontal=True,
+            key="analysis_selector" 
+        )
+        
+        # הגדרת ה-Dataframe הסופי - כברירת מחדל הוא המלא
+        df_final = df.copy()
 
-            # 4. חישובים - הכל מתבצע בזיכרון, לא מוצג עדיין
-            usage_sum = df_final['צריכה/ייצור בקוט"ש'].sum()
-            current_cost = usage_sum * 0.60
+        if analysis_mode == "טווח תאריכים ספציפי":
+            min_d = df['date_dt'].min().date()
+            max_d = df['date_dt'].max().date()
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                start_date = st.date_input("מתאריך", min_d, key="s_date")
+            with col2:
+                end_date = st.date_input("עד תאריך", max_d, key="e_date")
+            
+            # ביצוע הסינון
+            mask = (df['date_dt'].dt.date >= start_date) & (df['date_dt'].dt.date <= end_date)
+            df_final = df.loc[mask].copy()
+            
+            # בדיקה ויזואלית קטנה (תוכל להסיר אחר כך) כדי לוודא שהסינון עבד
+            st.caption(f"מנתח כרגע {len(df_final)} שורות של נתוני צריכה בטווח הנבחר.")
+
+        # 4. חישובים (חייבים לקרות על df_final)
+        if df_final.empty:
+            st.warning("⚠️ לא נמצאו נתונים בטווח התאריכים שנבחר. נסה לבחור טווח רחב יותר.")
+        else:
+            # עלות נוכחית בטווח הנבחר
+            current_usage = df_final['צריכה/ייצור בקוט"ש'].sum()
+            current_cost = current_usage * 0.60
             
             results = []
             for plan in PLANS:
+                # שים לב שאנחנו מעבירים את df_final לפונקציית החישוב
                 cost = calculate_plan_cost(df_final, plan)
                 results.append({
                     "חברה": plan['company'], 
@@ -85,6 +110,9 @@ if uploaded_file:
             
             res_df = pd.DataFrame(results).sort_values(by="חיסכון", ascending=False)
             best_plan = res_df.iloc[0]
+            
+            # הצגת התוצאות
+            st.success(f"### בטווח שנבחר, מצאנו לך חיסכון של ₪{best_plan['חיסכון']:.2f}!")
 
             # 5. רק עכשיו - הצגת התוצאות למשתמש!
             st.divider()
