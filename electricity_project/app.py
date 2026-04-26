@@ -95,6 +95,7 @@ if uploaded_file:
             })
         # הצגת התוצאה כ-Card בולט
         res_df = pd.DataFrame(results).sort_values(by="חיסכון", ascending=False)
+        best_plan = res_df.iloc[0]
         st.success(f"### בטווח שנבחר, מצאנו לך חיסכון של ₪{res_df.iloc[0]['חיסכון']:.2f}!")
         st.write(f"המסלול המומלץ: **{best_plan['חברה']} - {best_plan['מסלול']}**")
 
