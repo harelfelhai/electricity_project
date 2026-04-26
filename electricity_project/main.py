@@ -20,31 +20,29 @@ def load_electricity_data(file_path):
         print(f"קרתה שגיאה בקריאת הקובץ: {e}")
         return None
 
-def calculate_plan_cost(df, plan, base_price_per_kwh=0.60):
-    """מחשב עלות למסלול בודד מתוך ה-JSON"""
+def calculate_plan_cost(df, plan, base_price=0.60):
     discount = plan['discount_pct'] / 100
+    # חשוב: אנחנו עובדים רק על ה-df שמתקבל כארגומנט (שהוא df_final המסונן)
     
     if plan['type'] == 'fixed':
-        # הנחה קבועה על כל הקוט"ש
-        return (df['צריכה/ייצור בקוט"ש'] * base_price_per_kwh * (1 - discount)).sum()
-    
-    elif plan['type'] == 'range':
-        # הנחה רק בשעות מסוימות
+        # הנחה קבועה על כל הקוט"ש בטווח המסונן
+        return (df['צריכה/ייצור בקוט"ש'] * base_price * (1 - discount)).sum()
+    else:
+        # הנחה מבוססת שעות
         start, end = plan['start_hour'], plan['end_hour']
         
         def apply_rate(row):
-            # בדיקה אם השעה בטווח (מטפל גם בטווח שחוצה את חצות כמו 23 עד 7)
+            # בדיקה אם השעה בטווח (מטפל גם בטווחים שחוצים חצות)
             if start < end:
                 in_range = start <= row['hour'] < end
-            else: # טווח לילה (למשל 23 עד 07)
+            else: # טווח כמו 22:00 עד 06:00
                 in_range = row['hour'] >= start or row['hour'] < end
-                
-            if in_range:
-                return row['צריכה/ייצור בקוט"ש'] * (base_price_per_kwh * (1 - discount))
-            return row['צריכה/ייצור בקוט"ש'] * base_price_per_kwh
+            
+            price = base_price * (1 - discount) if in_range else base_price
+            return row['צריכה/ייצור בקוט"ש'] * price
             
         return df.apply(apply_rate, axis=1).sum()
-
+        
 # --- חלק ההרצה ---
 csv_path = os.path.join('data', 'usage_data.csv')
 # הנתיב לתיקייה שבה נמצא הסקריפט הנוכחי
