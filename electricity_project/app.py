@@ -41,121 +41,96 @@ uploaded_file = st.file_uploader("מעלים כאן את קובץ ה-CSV מחב�
 
 if uploaded_file:
     try:
-        # 1. טעינת הקובץ - בלי להציג כלום עדיין
-        df = pd.read_csv(uploaded_file, skiprows=10)
+        # --- שלב 1: זיהוי אוטומטי של תחילת הטבלה ---
+        # קוראים את הקובץ כטקסט פשוט כדי למצוא את שורת הכותרת
+        content = uploaded_file.getvalue().decode('utf-8').splitlines()
+        
+        header_row_index = 0
+        for i, line in enumerate(content):
+            # מחפשים שורה שמכילה את מילות המפתח של הכותרת
+            if "תאריך" in line and "מועד תחילת הפעימה" in line:
+                header_row_index = i
+                break
+        
+        # עכשיו טוענים את ה-DataFrame החל מהשורה שמצאנו
+        uploaded_file.seek(0) # מחזירים את הקובץ להתחלה לקריאה מחדש
+        df = pd.read_csv(uploaded_file, skiprows=header_row_index)
+        
+        # ניקוי שמות עמודות
         df.columns = [col.strip() for col in df.columns]
         
-        target_col = 'צריכה/ייצור בקוט"ש'
-        date_col = 'מועד תחילת הפעימה'
+        # --- שלב 2: זיהוי עמודות והמרת נתונים ---
+        date_col = 'תאריך'
+        time_col = 'מועד תחילת הפעימה'
+        usage_col = 'צריכה/ייצור בקוט"ש'
         
-        # 2. המרת נתונים וניקוי שורות ריקות/שגויות
-        # ניקוי בסיסי של העמודה
-        df[date_col] = df[date_col].astype(str).str.strip()
-        
-        # ניסיון המרה ראשון - פורמט סטנדרטי (יום ראשון)
-        df['date_dt'] = pd.to_datetime(df[date_col], dayfirst=True, errors='coerce')
-        
-        # אם זה נכשל, ננסה לנקות תווים נסתרים ולנסות שוב
-        if df['date_dt'].isna().all():
-            # השורה הזו מנקה תווים שהם לא מספרים, לוכסנים או נקודתיים
-            clean_date_str = df[date_col].str.replace(r'[^\d/ :.-]', '', regex=True)
-            df['date_dt'] = pd.to_datetime(clean_date_str, dayfirst=True, errors='coerce')
-
-        # המרת עמודת הצריכה למספר
-        df['צריכה/ייצור בקוט"ש'] = pd.to_numeric(df[target_col], errors='coerce')
-        
-        # הסרת שורות שבהן התאריך או הצריכה לא תקינים
-        df = df.dropna(subset=['date_dt', 'צריכה/ייצור בקוט"ש'])
-        
-        # יצירת עמודות עזר מהתאריכים שזיהינו
-        if not df.empty:
-            df['hour'] = df['date_dt'].dt.hour
-            df['only_date'] = df['date_dt'].dt.date
+        # וידוא שהעמודות קיימות
+        if date_col in df.columns and time_col in df.columns:
+            # חיבור תאריך ושעה וניקוי רווחים
+            df['full_dt_str'] = df[date_col].astype(str).str.strip() + ' ' + df[time_col].astype(str).str.strip()
             
-            # הדפסה לדיבאג (תוכל לראות את זה באתר)
-            st.write(f"הצלחנו לקרוא {len(df)} שורות.")
-            st.write(f"דוגמה לתאריך שזוהה: {df['only_date'].iloc[0]}")
-        # בדיקה אם נשארו נתונים אחרי הניקוי
-        if df.empty:
-            st.error("לא נמצאו נתוני צריכה תקינים. וודא שהעמודות קיימות בקובץ.")
-        else:
-            # 3. בחירת טווח (שיפור: לקיחת תאריכים אמיתיים מהקובץ)
-            st.subheader("📅 הגדרות ניתוח")
-            analysis_mode = st.radio("בחר טווח:", ["כל התקופה", "טווח תאריכים ספציפי"], horizontal=True)
+            # המרה חסינה לזמן
+            df['date_dt'] = pd.to_datetime(df['full_dt_str'], dayfirst=True, errors='coerce')
+            df['usage'] = pd.to_numeric(df[usage_col], errors='coerce')
             
-            # הגדרת ברירת מחדל
-            df_final = df.copy()
-
-            if analysis_mode == "טווח תאריכים ספציפי":
+            # הסרת שורות ריקות או כאלו שלא הומרו (כמו שורות סיכום בסוף)
+            df = df.dropna(subset=['date_dt', 'usage'])
+            
+            if df.empty:
+                st.error("לא נמצאו נתונים תקינים לאחר ניקוי הקובץ.")
+            else:
+                df['hour'] = df['date_dt'].dt.hour
+                df['only_date'] = df['date_dt'].dt.date
+                
+                # --- שלב 3: הגדרות ניתוח ---
+                st.subheader("📅 הגדרות ניתוח")
                 actual_min = df['only_date'].min()
                 actual_max = df['only_date'].max()
                 
-                col1, col2 = st.columns(2)
-                with col1:
-                    start_selection = st.date_input("מתאריך", actual_min, min_value=actual_min, max_value=actual_max)
-                with col2:
-                    end_selection = st.date_input("עד תאריך", actual_max, min_value=actual_min, max_value=actual_max)
+                analysis_mode = st.radio("בחר טווח:", ["כל התקופה", "טווח תאריכים ספציפי"], horizontal=True)
                 
-                # סינון הנתונים
-                mask = (df['only_date'] >= start_selection) & (df['only_date'] <= end_selection)
-                df_final = df.loc[mask].copy()
-                st.caption(f"מנתח {len(df_final)} שורות בטווח הנבחר.")
+                df_final = df.copy()
+                if analysis_mode == "טווח תאריכים ספציפי":
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        s_date = st.date_input("מתאריך", actual_min, min_value=actual_min, max_value=actual_max)
+                    with col2:
+                        e_date = st.date_input("עד תאריך", actual_max, min_value=actual_min, max_value=actual_max)
+                    
+                    mask = (df['only_date'] >= s_date) & (df['only_date'] <= e_date)
+                    df_final = df.loc[mask].copy()
 
-            # 4. חישובים
-            if df_final.empty:
-                st.warning("⚠️ לא נמצאו נתונים בטווח הנבחר.")
-            else:
-                current_usage = df_final['צריכה/ייצור בקוט"ש'].sum()
-                current_cost = current_usage * 0.60
-                
-                results = []
-                for plan in PLANS:
-                    cost = calculate_plan_cost(df_final, plan)
-                    results.append({
-                        "חברה": plan['company'], 
-                        "מסלול": plan['plan_name'], 
-                        "חיסכון": current_cost - cost
-                    })
-                
-                res_df = pd.DataFrame(results).sort_values(by="חיסכון", ascending=False)
-                best_plan = res_df.iloc[0]
-                
-                # תצוגת התוצאה
-                st.divider()
-                st.success(f"### מצאנו לך חיסכון של ₪{best_plan['חיסכון']:.2f}!")
-                st.info(f"המסלול המשתלם ביותר בטווח זה: **{best_plan['חברה']} - {best_plan['מסלול']}**")
-                
-                # המשך לטופס הלידים כרגיל...
-
-            # 5. רק עכשיו - הצגת התוצאות למשתמש!
-            st.divider()
-            st.success(f"### מצאנו לך חיסכון של ₪{best_plan['חיסכון']:.2f}!")
-            st.info(f"המסלול המשתלם ביותר עבורך: **{best_plan['חברה']} - {best_plan['מסלול']}**")
-            
-            # הצגת הטבלה המלאה (אופציונלי)
-            with st.expander("ראה פירוט של כל החברות"):
-                st.dataframe(res_df, use_container_width=True, hide_index=True)
-
-            # 6. טופס הלידים
-            st.divider()
-            c1, c2 = st.columns([1.5, 1])
-            with c1:
-                st.write("### רוצה להתחיל לחסוך?")
-                st.write(f"השאר פרטים ונציג מ**{best_plan['חברה']}** יחזור אליך להמשך תהליך.")
-            with c2:
-                with st.form("lead_form"):
-                    u_name = st.text_input("שם מלא")
-                    u_phone = st.text_input("מספר טלפון")
-                    if st.form_submit_button("אני רוצה לחסוך"):
-                        if u_name and u_phone:
-                            # פה נכניס בעתיד את השמירה ל-Google Sheets
-                            st.balloons()
-                            st.success("הפרטים נשמרו! נציג יחזור אליך בקרוב.")
-                        else:
-                            st.warning("נא למלא שם וטלפון")
+                # --- שלב 4: חישובים ---
+                if not df_final.empty:
+                    current_cost = df_final['usage'].sum() * 0.60
+                    results = []
+                    for plan in PLANS:
+                        # חשוב לוודא שפונקציית החישוב משתמשת בשם העמודה הנכון ('usage')
+                        cost = calculate_plan_cost(df_final.rename(columns={'usage': 'צריכה/ייצור בקוט"ש'}), plan)
+                        results.append({
+                            "חברה": plan['company'], 
+                            "מסלול": plan['plan_name'], 
+                            "חיסכון": current_cost - cost
+                        })
+                    
+                    res_df = pd.DataFrame(results).sort_values(by="חיסכון", ascending=False)
+                    best_plan = res_df.iloc[0]
+                    
+                    st.divider()
+                    st.success(f"### מצאנו לך חיסכון של ₪{best_plan['חיסכון']:.2f}!")
+                    st.info(f"המסלול המשתלם ביותר: **{best_plan['חברה']} - {best_plan['מסלול']}**")
+                    
+                    # הצגת פירוט וטופס לידים (המשך הקוד שלך...)
+                    with st.expander("ראה פירוט של כל החברות"):
+                        st.dataframe(res_df, use_container_width=True, hide_index=True)
+                    
+                    # טופס לידים
+                    st.divider()
+                    # ... כאן מגיע הקוד של טופס הלידים שכתבנו קודם ...
+        else:
+            st.error("פורמט הקובץ אינו מזוהה. וודא שהעמודות 'תאריך' ו-'מועד תחילת הפעימה' קיימות.")
 
     except Exception as e:
-        # אם יש שגיאה, נציג אותה בצורה ברורה לדיבאג
-        st.error(f"קרתה שגיאה בתהליך החישוב: {e}")
+        st.error(f"שגיאה בעיבוד הקובץ: {e}")
     except Exception as e:
         st.error("שגיאה בקריאת הקובץ. וודא שהעלית את הקובץ המקורי.")
