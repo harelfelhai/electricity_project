@@ -41,96 +41,80 @@ uploaded_file = st.file_uploader("מעלים כאן את קובץ ה-CSV מחב�
 
 if uploaded_file:
     try:
-        # 1. טעינה ראשונית של הקובץ
+        # 1. טעינת הקובץ - בלי להציג כלום עדיין
         df = pd.read_csv(uploaded_file, skiprows=10)
         df.columns = [col.strip() for col in df.columns]
-        st.write(df.head())
-        # 2. המרת סוגי נתונים (קריטי לסינון תאריכים)
-        # ניסיון המרה גמיש יותר - מטפל בפורמט התאריך והשעה של חברת החשמל
-        # המרת תאריכים - errors='coerce' הופך טעויות ל-None במקום לקרוס
+        
+        target_col = 'צריכה/ייצור בקוט"ש'
+        date_col = 'מועד תחילת הפעימה'
+        
+        # 2. המרת נתונים וניקוי שורות ריקות/שגויות
         df['date_dt'] = pd.to_datetime(df[date_col], dayfirst=True, errors='coerce')
         df['צריכה/ייצור בקוט"ש'] = pd.to_numeric(df[target_col], errors='coerce')
         
-        # השורה הקריטית: אנחנו משאירים רק את השורות שהצלחנו להמיר באמת
+        # כאן אנחנו מוודאים שאנחנו עובדים רק עם שורות תקינות
         df = df.dropna(subset=['date_dt', 'צריכה/ייצור בקוט"ש'])
-        
-        # רק עכשיו, כשיש לנו רק נתונים תקינים, נשלוף את השעה
         df['hour'] = df['date_dt'].dt.hour
         
-        # 3. כאן נכנס קוד בחירת טווח הזמנים (החדש):
-        st.subheader("הגדרות ניתוח")
-        analysis_mode = st.radio(
-            "בחר את טווח הניתוח:",
-            ["ניתוח כלל המידע שהועלה", "ניתוח טווח תאריכים ספציפי"],
-            horizontal=True
-        )
-
-        # יצירת משתנה שיכיל את הנתונים לעיבוד (ברירת מחדל: הכל)
-        df_filtered = df 
-
-        if analysis_mode == "ניתוח טווח תאריכים ספציפי":
-            min_date = df['date_dt'].min().date()
-            max_date = df['date_dt'].max().date()
+        if df.empty:
+            st.error("לא נמצאו נתוני צריכה תקינים בקובץ. וודא שהעלית את הקובץ המקורי של חברת החשמל.")
+        else:
+            # 3. בחירת טווח (רק אם הקובץ תקין)
+            st.subheader("📅 הגדרות ניתוח")
+            analysis_mode = st.radio("בחר טווח:", ["כל התקופה", "טווח תאריכים ספציפי"], horizontal=True)
             
-            col1, col2 = st.columns(2)
-            with col1:
-                start_date = st.date_input("תאריך התחלה", min_date, min_value=min_date, max_value=max_date)
-            with col2:
-                end_date = st.date_input("תאריך סיום", max_date, min_value=min_date, max_value=max_date)
+            df_final = df
+            if analysis_mode == "טווח תאריכים ספציפי":
+                start_date = st.date_input("מתאריך", df['date_dt'].min().date())
+                end_date = st.date_input("עד תאריך", df['date_dt'].max().date())
+                mask = (df['date_dt'].dt.date >= start_date) & (df['date_dt'].dt.date <= end_date)
+                df_final = df.loc[mask]
+
+            # 4. חישובים - הכל מתבצע בזיכרון, לא מוצג עדיין
+            usage_sum = df_final['צריכה/ייצור בקוט"ש'].sum()
+            current_cost = usage_sum * 0.60
             
-            # ביצוע הסינון בפועל
-            mask = (df['date_dt'].dt.date >= start_date) & (df['date_dt'].dt.date <= end_date)
-            df_filtered = df.loc[mask]
+            results = []
+            for plan in PLANS:
+                cost = calculate_plan_cost(df_final, plan)
+                results.append({
+                    "חברה": plan['company'], 
+                    "מסלול": plan['plan_name'], 
+                    "חיסכון": current_cost - cost
+                })
             
-            if df_filtered.empty:
-                st.warning("לא נמצאו נתונים בטווח התאריכים הנבחר. מציג את כל המידע.")
-                df_filtered = df
+            res_df = pd.DataFrame(results).sort_values(by="חיסכון", ascending=False)
+            best_plan = res_df.iloc[0]
 
-        # 4. ביצוע החישובים על בסיס הנתונים המסוננים (df_filtered)
-        total_usage = df_filtered['צריכה/ייצור בקוט"ש'].sum()
-        current_cost = total_usage * 0.60
-        
-        # חישוב כל מסלול מול הנתונים המסוננים
-        results = []
-        for plan in PLANS:
-            new_cost = calculate_plan_cost(df_filtered, plan) # שימוש ב-df_filtered!
-            results.append({
-                "חברה": plan['company'], 
-                "מסלול": plan['plan_name'], 
-                "חיסכון": current_cost - new_cost
-            })
-        # הצגת התוצאה כ-Card בולט
-        res_df = pd.DataFrame(results).sort_values(by="חיסכון", ascending=False)
-        best_plan = res_df.iloc[0]
-        st.success(f"### בטווח שנבחר, מצאנו לך חיסכון של ₪{res_df.iloc[0]['חיסכון']:.2f}!")
-        st.write(f"המסלול המומלץ: **{best_plan['חברה']} - {best_plan['מסלול']}**")
+            # 5. רק עכשיו - הצגת התוצאות למשתמש!
+            st.divider()
+            st.success(f"### מצאנו לך חיסכון של ₪{best_plan['חיסכון']:.2f}!")
+            st.info(f"המסלול המשתלם ביותר עבורך: **{best_plan['חברה']} - {best_plan['מסלול']}**")
+            
+            # הצגת הטבלה המלאה (אופציונלי)
+            with st.expander("ראה פירוט של כל החברות"):
+                st.dataframe(res_df, use_container_width=True, hide_index=True)
 
-        st.divider()
-
-        # --- מנגנון הלידים (Call to Action) ---
-        col_text, col_form = st.columns([1.5, 1])
-        
-        with col_text:
-            st.write("### רוצה להתחיל לחסוך?")
-            st.write("אין צורך להתקשר לחברות ולהמתין בתור. השאר פרטים ונציג מהחברה המשתלמת ביותר עבורך יחזור אליך להשלמת המעבר (ללא עלות).")
-            st.info("💡 המעבר מתבצע מרחוק וללא צורך בטכנאי")
-
-        with col_form:
-            with st.container():
-                st.markdown('<div class="lead-form">', unsafe_allow_html=True)
+            # 6. טופס הלידים
+            st.divider()
+            c1, c2 = st.columns([1.5, 1])
+            with c1:
+                st.write("### רוצה להתחיל לחסוך?")
+                st.write(f"השאר פרטים ונציג מ**{best_plan['חברה']}** יחזור אליך להמשך תהליך.")
+            with c2:
                 with st.form("lead_form"):
-                    name = st.text_input("שם מלא")
-                    phone = st.text_input("מספר טלפון")
-                    submitted = st.form_submit_button("אני רוצה לחסוך בחשמל")
-                    
-                    if submitted:
-                        if name and phone:
-                            # כאן בעתיד נשלח את הנתונים ל-Database
+                    u_name = st.text_input("שם מלא")
+                    u_phone = st.text_input("מספר טלפון")
+                    if st.form_submit_button("אני רוצה לחסוך"):
+                        if u_name and u_phone:
+                            # פה נכניס בעתיד את השמירה ל-Google Sheets
                             st.balloons()
-                            st.success(f"תודה {name}, פרטיך הועברו לנציג {best_plan['חברה']}!")
+                            st.success("הפרטים נשמרו! נציג יחזור אליך בקרוב.")
                         else:
-                            st.error("נא למלא שם וטלפון")
-                st.markdown('</div>', unsafe_allow_html=True)
+                            st.warning("נא למלא שם וטלפון")
 
+    except Exception as e:
+        # אם יש שגיאה, נציג אותה בצורה ברורה לדיבאג
+        st.error(f"קרתה שגיאה בתהליך החישוב: {e}")
     except Exception as e:
         st.error("שגיאה בקריאת הקובץ. וודא שהעלית את הקובץ המקורי.")
