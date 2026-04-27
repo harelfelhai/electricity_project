@@ -62,14 +62,14 @@
     {
         "company": "סלקום אנרג'י",
         "plan_name": "מסלול יום",
-        "discount_pct": 17,
+        "discount_pct": 20,
         "type": "range",
         "start_hour": 7,
         "end_hour": 17,
         "days_active": [0, 1, 2, 3, 4],
         "exclusive": null,
         "link": "https://cellcom.co.il/production/Private/1/energy3/",
-        "notes": "15% הנחה בימים א'-ה' בין 08:00 ל-17:00"
+        "notes": "20% הנחה בימים א'-ה' בין 07:00 ל-17:00"
     },
     {
         "company": "סלקום אנרג'י",
