@@ -41,7 +41,7 @@ uploaded_file = st.file_uploader("מעלים כאן את קובץ ה-CSV מחב�
 
 if uploaded_file:
     try:
-        # --- שלב 1: זיהוי אוטומטי של תחילת הטבלה ---
+        # --- שלב 1: זיהוי תחילת טבלה ---
         content = uploaded_file.getvalue().decode('utf-8').splitlines()
         header_row_index = 0
         for i, line in enumerate(content):
@@ -52,80 +52,58 @@ if uploaded_file:
         uploaded_file.seek(0)
         df = pd.read_csv(uploaded_file, skiprows=header_row_index)
         df.columns = [col.strip() for col in df.columns]
-        
-        # 2. המרת נתונים וניקוי שורות ריקות/שגויות
-        
-        # הגדרת שמות העמודות כפי שהן מופיעות בקובץ המקורי
+
+        # --- שלב 2: הגדרת עמודות והמרת נתונים ---
         date_col = 'תאריך'
         time_col = 'מועד תחילת הפעימה'
         usage_col = 'צריכה/ייצור בקוט"ש'
 
-        # וידוא שהעמודות קיימות ב-DataFrame
         if date_col in df.columns and time_col in df.columns:
+            # המרת תאריכים
+            df['full_dt_str'] = df[date_col].astype(str).str.strip() + ' ' + df[time_col].astype(str).str.strip()
+            df['date_dt'] = pd.to_datetime(df['full_dt_str'], dayfirst=True, errors='coerce')
             
-            # א. ניקוי העמודות - הסרת רווחים לבנים ותווים נסתרים
-            df[date_col] = df[date_col].astype(str).str.strip()
-            df[time_col] = df[time_col].astype(str).str.strip()
+            # המרת צריכה למספר
+            df['usage_num'] = pd.to_numeric(df[usage_col].astype(str).str.replace('"', '').str.replace(',', '').str.strip(), errors='coerce')
             
-            # ב. חיבור התאריך והשעה למחרוזת אחת
-            # פורמט מצופה: "08/07/2025 00:00"
-            df['combined_dt'] = df[date_col] + ' ' + df[time_col]
+            # ניקוי שורות ריקות
+            df = df.dropna(subset=['date_dt', 'usage_num'])
             
-            # ג. המרה לאובייקט זמן (datetime)
-            # dayfirst=True קריטי כדי ש-01/05 יתפרש כ-1 במאי ולא כ-5 בינואר
-            df['date_dt'] = pd.to_datetime(df['combined_dt'], dayfirst=True, errors='coerce')
-            
-            # ד. טיפול בעמודת הצריכה (ניקוי גרשיים ופסיקים)
-            df['usage'] = pd.to_numeric(
-                df[usage_col].astype(str).str.replace('"', '').str.replace(',', '').str.strip(), 
-                errors='coerce'
-            )
-            
-            # ה. הסרת שורות שלא הצלחנו להמיר (שורות ריקות או כותרות משנה)
-            df = df.dropna(subset=['date_dt', 'usage'])
-            
-            # ו. חילוץ שדות עזר לצורך סינון וחישוב
-            df['hour'] = df['date_dt'].dt.hour
-            df['only_date'] = df['date_dt'].dt.date
-            df['day_of_week'] = df['date_dt'].dt.dayofweek # 0=יום שני, 6=יום ראשון (לפי פייתון)
-            
-            # נתקן את ימי השבוע שיתאימו לישראל (0=ראשון, 6=שבת)
-            # פייתון נותן בברירת מחדל 0 ליום שני. נזיז את זה:
-            df['israeli_day'] = (df['date_dt'].dt.dayofweek + 1) % 7
-            
-            st.success(f"הצלחנו לזהות {len(df)} שורות של נתונים.")
-            st.info(f"טווח התאריכים בקובץ: {df['only_date'].min()} עד {df['only_date'].max()}")
-        else:
-            st.error(f"לא נמצאו העמודות הדרושות. העמודות שנמצאו: {', '.join(df.columns)}")
+            if df.empty:
+                st.error("לא נמצאו נתוני צריכה תקינים בקובץ.")
+            else:
+                # --- שלב 3: הגדרות ניתוח ---
+                df['hour'] = df['date_dt'].dt.hour
+                df['only_date'] = df['date_dt'].dt.date
                 
-            # --- שלב 3: הגדרות ניתוח ---
-            st.subheader("📅 הגדרות ניתוח")
-            actual_min = df['only_date'].min()
-            actual_max = df['only_date'].max()
+                st.subheader("📅 הגדרות ניתוח")
+                actual_min = df['only_date'].min()
+                actual_max = df['only_date'].max()
                 
-            analysis_mode = st.radio("בחר טווח:", ["כל התקופה", "טווח תאריכים ספציפי"], horizontal=True)
+                analysis_mode = st.radio("בחר טווח:", ["כל התקופה", "טווח תאריכים ספציפי"], horizontal=True)
                 
-            df_final = df.copy()
-            if analysis_mode == "טווח תאריכים ספציפי":
-                col1, col2 = st.columns(2)
-                with col1:
-                    s_date = st.date_input("מתאריך", actual_min, min_value=actual_min, max_value=actual_max)
-                with col2:
-                    e_date = st.date_input("עד תאריך", actual_max, min_value=actual_min, max_value=actual_max)
-                mask = (df['only_date'] >= s_date) & (df['only_date'] <= e_date)
-                df_final = df.loc[mask].copy()
+                df_final = df.copy()
+                if analysis_mode == "טווח תאריכים ספציפי":
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        s_date = st.date_input("מתאריך", actual_min, min_value=actual_min, max_value=actual_max)
+                    with col2:
+                        e_date = st.date_input("עד תאריך", actual_max, min_value=actual_min, max_value=actual_max)
+                    
+                    mask = (df['only_date'] >= s_date) & (df['only_date'] <= e_date)
+                    df_final = df.loc[mask].copy()
 
                 # --- שלב 4: חישובים ---
                 if not df_final.empty:
-                    # שימוש ב-float() כדי למנוע את שגיאת ה-String Multiply
-                    total_kwh = float(df_final['usage'].sum())
-                    current_cost = total_kwh * 0.60
+                    # יצירת עמודה עם השם המקורי לצורך פונקציית החישוב
+                    df_final['צריכה/ייצור בקוט"ש'] = df_final['usage_num']
+                    
+                    current_usage = float(df_final['usage_num'].sum())
+                    current_cost = current_usage * 0.60
                     
                     results = []
                     for plan in PLANS:
-                        # שים לב שאנחנו שולחים לחישוב את df_final עם שם העמודה המקורי שהפונקציה מצפה לו
-                        df_for_calc = df_final.rename(columns={'usage': 'צריכה/ייצור בקוט"ש'})
-                        cost = calculate_plan_cost(df_for_calc, plan)
+                        cost = calculate_plan_cost(df_final, plan)
                         results.append({
                             "חברה": plan['company'], 
                             "מסלול": plan['plan_name'], 
@@ -141,9 +119,10 @@ if uploaded_file:
                     
                     with st.expander("ראה פירוט של כל החברות"):
                         st.dataframe(res_df, use_container_width=True, hide_index=True)
+                else:
+                    st.warning("לא נמצאו נתונים בטווח הנבחר.")
         else:
-            st.error("לא נמצאו עמודות 'תאריך' ו-'מועד תחילת הפעימה'.")
+            st.error("עמודות 'תאריך' ו-'מועד תחילת הפעימה' לא נמצאו.")
+
     except Exception as e:
         st.error(f"שגיאה בעיבוד הקובץ: {e}")
-    except Exception as e:
-        st.error("שגיאה בקריאת הקובץ. וודא שהעלית את הקובץ המקורי.")
