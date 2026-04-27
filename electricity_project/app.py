@@ -133,11 +133,11 @@ if uploaded_file:
                             "חיסכון שנתי": annual_savings
                         })
                     
-                    res_df = pd.DataFrame(results).sort_values(by="חיסכון", ascending=False)
+                    res_df = pd.DataFrame(results).sort_values(by="חיסכון שנתי", ascending=False)
                     best_plan = res_df.iloc[0]
                     
                     st.divider()
-                    st.success(f"### מצאנו לך חיסכון של ₪{best_plan['חיסכון']:.2f}!")
+                    st.success(f"### מצאנו לך חיסכון של ₪{best_plan['חיסכון שנתי']:.2f}!")
                     st.info(f"המסלול המומלץ: **{best_plan['חברה']} - {best_plan['מסלול']}**")
                     
                     with st.expander("ראה פירוט של כל החברות"):
