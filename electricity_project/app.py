@@ -53,29 +53,52 @@ if uploaded_file:
         df = pd.read_csv(uploaded_file, skiprows=header_row_index)
         df.columns = [col.strip() for col in df.columns]
         
-        # --- שלב 2: זיהוי עמודות והמרת נתונים ---
+        # 2. המרת נתונים וניקוי שורות ריקות/שגויות
+        
+        # הגדרת שמות העמודות כפי שהן מופיעות בקובץ המקורי
         date_col = 'תאריך'
         time_col = 'מועד תחילת הפעימה'
         usage_col = 'צריכה/ייצור בקוט"ש'
-        
+
+        # וידוא שהעמודות קיימות ב-DataFrame
         if date_col in df.columns and time_col in df.columns:
-            # חיבור תאריך ושעה
-            df['full_dt_str'] = df[date_col].astype(str).str.strip() + ' ' + df[time_col].astype(str).str.strip()
-            df['date_dt'] = pd.to_datetime(df['full_dt_str'], dayfirst=True, errors='coerce')
             
-            # תיקון השגיאה: ניקוי תווים לא מספריים והמרה למספר
-            df[usage_col] = df[usage_col].astype(str).str.replace('"', '').str.replace(',', '').str.strip()
-            df['usage'] = pd.to_numeric(df[usage_col], errors='coerce')
+            # א. ניקוי העמודות - הסרת רווחים לבנים ותווים נסתרים
+            df[date_col] = df[date_col].astype(str).str.strip()
+            df[time_col] = df[time_col].astype(str).str.strip()
             
+            # ב. חיבור התאריך והשעה למחרוזת אחת
+            # פורמט מצופה: "08/07/2025 00:00"
+            df['combined_dt'] = df[date_col] + ' ' + df[time_col]
+            
+            # ג. המרה לאובייקט זמן (datetime)
+            # dayfirst=True קריטי כדי ש-01/05 יתפרש כ-1 במאי ולא כ-5 בינואר
+            df['date_dt'] = pd.to_datetime(df['combined_dt'], dayfirst=True, errors='coerce')
+            
+            # ד. טיפול בעמודת הצריכה (ניקוי גרשיים ופסיקים)
+            df['usage'] = pd.to_numeric(
+                df[usage_col].astype(str).str.replace('"', '').str.replace(',', '').str.strip(), 
+                errors='coerce'
+            )
+            
+            # ה. הסרת שורות שלא הצלחנו להמיר (שורות ריקות או כותרות משנה)
             df = df.dropna(subset=['date_dt', 'usage'])
             
-            if df.empty:
-                st.error("לא נמצאו נתונים תקינים. וודא שהקובץ מכיל נתוני צריכה.")
-            else:
-                df['hour'] = df['date_dt'].dt.hour
-                df['only_date'] = df['date_dt'].dt.date
+            # ו. חילוץ שדות עזר לצורך סינון וחישוב
+            df['hour'] = df['date_dt'].dt.hour
+            df['only_date'] = df['date_dt'].dt.date
+            df['day_of_week'] = df['date_dt'].dt.dayofweek # 0=יום שני, 6=יום ראשון (לפי פייתון)
+            
+            # נתקן את ימי השבוע שיתאימו לישראל (0=ראשון, 6=שבת)
+            # פייתון נותן בברירת מחדל 0 ליום שני. נזיז את זה:
+            df['israeli_day'] = (df['date_dt'].dt.dayofweek + 1) % 7
+            
+            st.success(f"הצלחנו לזהות {len(df)} שורות של נתונים.")
+            st.info(f"טווח התאריכים בקובץ: {df['only_date'].min()} עד {df['only_date'].max()}")
+        else:
+            st.error(f"לא נמצאו העמודות הדרושות. העמודות שנמצאו: {', '.join(df.columns)}")
                 
-                # --- שלב 3: הגדרות ניתוח ---
+            # --- שלב 3: הגדרות ניתוח ---
                 st.subheader("📅 הגדרות ניתוח")
                 actual_min = df['only_date'].min()
                 actual_max = df['only_date'].max()
