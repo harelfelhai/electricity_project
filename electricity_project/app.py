@@ -141,8 +141,8 @@ if uploaded_file:
                     
                     with st.expander("ראה פירוט של כל החברות"):
                         st.dataframe(res_df, use_container_width=True, hide_index=True)
-else:
-    st.error("לא נמצאו עמודות 'תאריך' ו-'מועד תחילת הפעימה'.")
+        else:
+            st.error("לא נמצאו עמודות 'תאריך' ו-'מועד תחילת הפעימה'.")
     except Exception as e:
         st.error(f"שגיאה בעיבוד הקובץ: {e}")
     except Exception as e:
