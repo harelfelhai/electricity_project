@@ -126,7 +126,7 @@ if uploaded_file:
                     results = []
                     for plan in PLANS:
                         cost = calculate_plan_cost(df_final, plan)
-                        annual_savings = (current_cost - float(cost)) * annual_factor
+                        annual_savings = int((current_cost - float(cost)) * annual_factor)
                         results.append({
                             "חברה": plan['company'], 
                             "מסלול": plan['plan_name'], 
