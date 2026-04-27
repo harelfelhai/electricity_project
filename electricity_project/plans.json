@@ -5,31 +5,11 @@
         "discount_pct": 7,
         "type": "fixed",
         "start_hour": 0,
-        "end_hour": 24
-    },
-    {
-        "company": "בזק אנרג'י",
-        "plan_name": "חוסכים בלילה",
-        "discount_pct": 20,
-        "type": "range",
-        "start_hour": 23,
-        "end_hour": 7
-    },
-    {
-        "company": "סלקום אנרג'י",
-        "plan_name": "הנחה קבועה",
-        "discount_pct": 5,
-        "type": "fixed",
-        "start_hour": 0,
-        "end_hour": 24
-    },
-    {
-        "company": "סלקום אנרג'י",
-        "plan_name": "חוסכים בלילה",
-        "discount_pct": 18,
-        "type": "range",
-        "start_hour": 23,
-        "end_hour": 7
+        "end_hour": 24,
+        "days_active": [0, 1, 2, 3, 4, 5, 6],
+        "exclusive": null,
+        "link": "https://www.bezeq.co.il/energy",
+        "notes": "7% הנחה קבועה לכל היום"
     },
     {
         "company": "סלקום אנרג'י",
@@ -37,46 +17,58 @@
         "discount_pct": 15,
         "type": "range",
         "start_hour": 8,
-        "end_hour": 17
+        "end_hour": 17,
+        "days_active": [0, 1, 2, 3, 4],
+        "exclusive": null,
+        "link": "https://cellcom.co.il/electricity",
+        "notes": "15% הנחה בימים א'-ה' בין 08:00 ל-17:00"
     },
     {
         "company": "אלקטרה פאוור",
-        "plan_name": "מסלול Power",
-        "discount_pct": 5,
-        "type": "fixed",
-        "start_hour": 0,
-        "end_hour": 24
-    },
-    {
-        "company": "אלקטרה פאוור",
-        "plan_name": "מסלול הייטק (לילה)",
-        "discount_pct": 20,
+        "plan_name": "לילה פלוס",
+        "discount_pct": 21,
         "type": "range",
         "start_hour": 23,
-        "end_hour": 7
+        "end_hour": 7,
+        "days_active": [0, 1, 2, 3, 4],
+        "exclusive": null,
+        "link": "https://super-power.co.il/",
+        "notes": "21% הנחה בימים א'-ה' בין 23:00 ל-07:00"
     },
     {
-        "company": "פזגז חשמל",
-        "plan_name": "הנחה קבועה",
-        "discount_pct": 7,
-        "type": "fixed",
-        "start_hour": 0,
-        "end_hour": 24
+        "company": "אלקטרה פאוור",
+        "plan_name": "מסלול יום",
+        "discount_pct": 17,
+        "type": "range",
+        "start_hour": 7,
+        "end_hour": 17,
+        "days_active": [0, 1, 2, 3, 4],
+        "exclusive": null,
+        "link": "https://super-power.co.il/",
+        "notes": "17% הנחה בימים א'-ה' בין 07:00 ל-17:00"
     },
     {
-        "company": "פרטנר פאוור",
+        "company": "אלקטרה פאוור",
         "plan_name": "הנחה קבועה",
-        "discount_pct": 5,
-        "type": "fixed",
+        "discount_pct": 6.5,
+        "type": "range",
         "start_hour": 0,
-        "end_hour": 24
+        "end_hour": 24,
+        "days_active": [0, 1, 2, 3, 4, 5, 6],
+        "exclusive": null,
+        "link": "https://super-power.co.il/",
+        "notes": "6.5% הנחה קבועה לכל היום"
     },
     {
-        "company": "הוט אנרג'י",
-        "plan_name": "הנחה קבועה",
-        "discount_pct": 5,
+        "company": "אמישראגז",
+        "plan_name": "מסלול מדרגות",
+        "discount_pct": 6.5,
         "type": "fixed",
         "start_hour": 0,
-        "end_hour": 24
+        "end_hour": 24,
+        "days_active": [0, 1, 2, 3, 4, 5, 6],
+        "exclusive": null,
+        "link": "https://www.amishragas.co.il",
+        "notes": "שנה א' 6.5%, שנה ב' 7%, שנה ג' 8%"
     }
 ]
