@@ -51,7 +51,11 @@ uploaded_file = st.file_uploader("מעלים כאן את קובץ ה-CSV מחב�
 if uploaded_file:
     try:
         # --- שלב 1: זיהוי תחילת טבלה ---
-        content = uploaded_file.getvalue().decode('utf-8').splitlines()
+        try:
+            content = uploaded_file.getvalue().decode('utf-8').splitlines()
+        except UnicodeDecodeError:
+            # אם נכשל, ננסה את הקידוד הנפוץ לקבצי CSV ישראליים
+            content = uploaded_file.getvalue().decode('cp1255').splitlines()
         header_row_index = 0
         for i, line in enumerate(content):
             if "תאריך" in line and "מועד תחילת הפעימה" in line:
@@ -59,7 +63,13 @@ if uploaded_file:
                 break
         
         uploaded_file.seek(0)
-        df = pd.read_csv(uploaded_file, skiprows=header_row_index)
+        # ניסיון טעינה של ה-CSV עם טיפול בשגיאות קידוד
+        try:
+            uploaded_file.seek(0)
+            df = pd.read_csv(uploaded_file, skiprows=header_row_index, encoding='utf-8')
+        except UnicodeDecodeError:
+            uploaded_file.seek(0)
+            df = pd.read_csv(uploaded_file, skiprows=header_row_index, encoding='cp1255')
         df.columns = [col.strip() for col in df.columns]
 
         # --- שלב 2: הגדרת עמודות והמרת נתונים ---
