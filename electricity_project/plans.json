@@ -53,7 +53,7 @@
         "discount_pct": 18,
         "type": "range",
         "start_hour": 20,
-        "end_hour": 02,
+        "end_hour": 2,
         "days_active": [0, 1, 2, 3, 4],
         "exclusive": null,
         "link": "https://cellcom.co.il/production/Private/1/energy3/",
@@ -117,6 +117,30 @@
         "days_active": [0, 1, 2, 3, 4, 5, 6],
         "exclusive": null,
         "link": "https://super-power.co.il/",
+        "notes": "6.5% הנחה קבועה לכל היום"
+    },
+    {
+        "company": "פרטנר פאוור",
+        "plan_name": "מסלול יום",
+        "discount_pct": 15,
+        "type": "range",
+        "start_hour": 7,
+        "end_hour": 17,
+        "days_active": [0, 1, 2, 3, 4],
+        "exclusive": null,
+        "link": "https://www.partner.co.il/n/partnerpower/lobby",
+        "notes": "6.5% הנחה קבועה לכל היום"
+    },
+    {
+        "company": "פרטנר פאוור",
+        "plan_name": "מסלול לילה",
+        "discount_pct": 15,
+        "type": "range",
+        "start_hour": 23,
+        "end_hour": 7,
+        "days_active": [0, 1, 2, 3, 4],
+        "exclusive": null,
+        "link": "https://www.partner.co.il/n/partnerpower/lobby",
         "notes": "6.5% הנחה קבועה לכל היום"
     },
     {
