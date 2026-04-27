@@ -203,19 +203,6 @@ if uploaded_file:
                             if st.button("בדיקה חדשה"):
                                 st.session_state.details_submitted = False
                                 st.rerun()
-    
-    
-    
-    
-    
-    
-                        
-                    st.divider()
-                    st.success(f"### מצאנו לך חיסכון שנתי של ₪{best_plan['חיסכון שנתי']:.2f}!")
-                    st.info(f"המסלול המומלץ: **{best_plan['חברה']} - {best_plan['מסלול']}**")
-                    
-                    with st.expander("ראה פירוט של כל החברות"):
-                        st.dataframe(res_df, use_container_width=True, hide_index=True)
                 else:
                     st.warning("לא נמצאו נתונים בטווח הנבחר.")
         else:
