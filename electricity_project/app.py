@@ -4,7 +4,7 @@ import json
 import os
 
 # הגדרות דף
-st.set_page_config(page_title="חשמל-לינק | חוסכים חכם", layout="wide", page_icon="💰")
+st.set_page_config(page_title="מחשבון החשמל | חוסכים חכם", layout="wide", page_icon="💰")
 
 # עיצוב RTL ושיפור נראות הטופס
 st.markdown("""
