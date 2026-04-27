@@ -119,14 +119,18 @@ if uploaded_file:
                     
                     current_usage = float(df_final['usage_num'].sum())
                     current_cost = current_usage * 0.60
-                    
+                    num_days = (actual_max - actual_min).days
+                    if num_days == 0: num_days = 1 # מניעת חלוקה באפס
+                    # פקטור הכפלה לשנה (365 ימים)
+                    annual_factor = 365 / num_days
                     results = []
                     for plan in PLANS:
                         cost = calculate_plan_cost(df_final, plan)
+                        annual_savings = (current_cost - float(cost)) * annual_factor
                         results.append({
                             "חברה": plan['company'], 
                             "מסלול": plan['plan_name'], 
-                            "חיסכון": current_cost - float(cost)
+                            "חיסכון שנתי": annual_savings
                         })
                     
                     res_df = pd.DataFrame(results).sort_values(by="חיסכון", ascending=False)
