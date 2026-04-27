@@ -99,21 +99,21 @@ if uploaded_file:
             st.error(f"לא נמצאו העמודות הדרושות. העמודות שנמצאו: {', '.join(df.columns)}")
                 
             # --- שלב 3: הגדרות ניתוח ---
-                st.subheader("📅 הגדרות ניתוח")
-                actual_min = df['only_date'].min()
-                actual_max = df['only_date'].max()
+            st.subheader("📅 הגדרות ניתוח")
+            actual_min = df['only_date'].min()
+            actual_max = df['only_date'].max()
                 
-                analysis_mode = st.radio("בחר טווח:", ["כל התקופה", "טווח תאריכים ספציפי"], horizontal=True)
+            analysis_mode = st.radio("בחר טווח:", ["כל התקופה", "טווח תאריכים ספציפי"], horizontal=True)
                 
-                df_final = df.copy()
-                if analysis_mode == "טווח תאריכים ספציפי":
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        s_date = st.date_input("מתאריך", actual_min, min_value=actual_min, max_value=actual_max)
-                    with col2:
-                        e_date = st.date_input("עד תאריך", actual_max, min_value=actual_min, max_value=actual_max)
-                    mask = (df['only_date'] >= s_date) & (df['only_date'] <= e_date)
-                    df_final = df.loc[mask].copy()
+            df_final = df.copy()
+            if analysis_mode == "טווח תאריכים ספציפי":
+                col1, col2 = st.columns(2)
+                with col1:
+                    s_date = st.date_input("מתאריך", actual_min, min_value=actual_min, max_value=actual_max)
+                with col2:
+                    e_date = st.date_input("עד תאריך", actual_max, min_value=actual_min, max_value=actual_max)
+                mask = (df['only_date'] >= s_date) & (df['only_date'] <= e_date)
+                df_final = df.loc[mask].copy()
 
                 # --- שלב 4: חישובים ---
                 if not df_final.empty:
