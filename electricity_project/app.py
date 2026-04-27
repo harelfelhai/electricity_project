@@ -137,7 +137,7 @@ if uploaded_file:
                     best_plan = res_df.iloc[0]
                     
                     st.divider()
-                    st.success(f"### מצאנו לך חיסכון של ₪{best_plan['חיסכון שנתי']:.2f}!")
+                    st.success(f"### מצאנו לך חיסכון שנתי של ₪{best_plan['חיסכון שנתי']:.2f}!")
                     st.info(f"המסלול המומלץ: **{best_plan['חברה']} - {best_plan['מסלול']}**")
                     
                     with st.expander("ראה פירוט של כל החברות"):
