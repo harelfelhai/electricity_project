@@ -1,5 +1,7 @@
 import streamlit as st
 import pandas as pd
+import json
+import os
 
 # הגדרות דף
 st.set_page_config(page_title="חשמל-לינק | חוסכים חכם", layout="wide", page_icon="💰")
@@ -18,12 +20,19 @@ st.markdown("""
 st.title("⚡ חוסכים במעבר בין ספקי חשמל")
 st.subheader("גררו את הקובץ וגלו מיד כמה כסף מחכה לכם")
 
-# פונקציות חישוב (נשארות אותו דבר)
-PLANS = [
-    {"company": "בזק אנרג'י", "plan_name": "הנחה קבועה (7%)", "discount_pct": 7, "type": "fixed", "start_hour": 0, "end_hour": 24},
-    {"company": "פזגז חשמל", "plan_name": "הנחה קבועה (7%)", "discount_pct": 7, "type": "fixed", "start_hour": 0, "end_hour": 24},
-    {"company": "סלקום אנרג'י", "plan_name": "עובדים מהבית (15%)", "discount_pct": 15, "type": "range", "start_hour": 8, "end_hour": 17},
-]
+# פונקציה לטעינת מסלולים מקובץ JSON
+def load_plans():
+    # נתיב לקובץ (מניח שהוא באותה תיקייה)
+    file_path = os.path.join(os.path.dirname(__file__), 'plans.json')
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        st.error(f"שגיאה בטעינת קובץ המסלולים: {e}")
+        return []
+
+# טעינת המסלולים לתוך המשתנה PLANS
+PLANS = load_plans()
 
 def calculate_plan_cost(df, plan, base_price=0.60):
     discount = plan['discount_pct'] / 100
