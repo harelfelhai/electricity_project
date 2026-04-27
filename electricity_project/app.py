@@ -135,7 +135,81 @@ if uploaded_file:
                     
                     res_df = pd.DataFrame(results).sort_values(by="חיסכון שנתי", ascending=False)
                     best_plan = res_df.iloc[0]
-                    
+                    # --- שלב 5: הצגת ה"טיזר" ואיסוף פרטים ---
+                    if not df_final.empty:
+                        st.divider()
+                        
+                        # תצוגה בולטת של החיסכון
+                        st.markdown(f"""
+                            <div style="text-align: center; background-color: #f0f2f6; padding: 20px; border-radius: 10px; border: 2px solid #1f77b4;">
+                                <h2 style="color: #1f77b4; margin-bottom: 0;">הניתוח הושלם!</h2>
+                                <p style="font-size: 1.2em; margin: 10px 0;">מצאנו לך מסלול שיכול לחסוך לך כ-</p>
+                                <h1 style="color: #ff4b4b; font-size: 3em; margin: 0;">₪{best_plan['חיסכון שנתי']:,}</h1>
+                                <p style="font-size: 1.1em; color: #555;">בכל שנה ⚡</p>
+                            </div>
+                        """, unsafe_allow_html=True)
+                        
+                        st.write("")
+                        st.info("כדי לראות את שם המסלול המשתלם ביותר ולקבל קישור להצטרפות, אנא מלא את פרטיך:")
+    
+                        # ניהול מצב החשיפה ב-Session State
+                        if 'details_submitted' not in st.session_state:
+                            st.session_state.details_submitted = False
+    
+                        # הצגת הטופס אם המשתמש עדיין לא מילא פרטים
+                        if not st.session_state.details_submitted:
+                            with st.form("lead_capture_form"):
+                                col1, col2 = st.columns(2)
+                                with col1:
+                                    u_name = st.text_input("שם מלא", placeholder="ישראל ישראלי")
+                                with col2:
+                                    u_phone = st.text_input("מספר טלפון", placeholder="050-1234567")
+                                
+                                submit_lead = st.form_submit_button("גלה לי את המסלול המנצח")
+    
+                                if submit_lead:
+                                    if u_name and u_phone:
+                                        st.session_state.details_submitted = True
+                                        st.session_state.u_name = u_name
+                                        st.session_state.u_phone = u_phone
+                                        st.rerun()
+                                    else:
+                                        st.error("נא למלא שם ומספר טלפון כדי להמשיך.")
+    
+                        # חשיפת התוצאות לאחר מילוי הפרטים
+                        if st.session_state.details_submitted:
+                            st.balloons()
+                            st.success(f"תודה {st.session_state.u_name}! הנה התוצאות שלך:")
+                            
+                            # הצגת כרטיס המסלול המנצח
+                            st.markdown(f"""
+                                <div style="background-color: #e8f4ea; padding: 20px; border-radius: 10px; border-right: 5px solid #28a745;">
+                                    <h3 style="margin-top: 0;">🏆 המסלול המומלץ עבורך:</h3>
+                                    <p style="font-size: 1.2em; margin: 5px 0;"><b>חברה:</b> {best_plan['חברה']}</p>
+                                    <p style="font-size: 1.2em; margin: 5px 0;"><b>מסלול:</b> {best_plan['מסלול']}</p>
+                                    <p style="font-size: 1.2em; margin: 5px 0;"><b>חיסכון שנתי מוערך:</b> ₪{best_plan['חיסכון שנתי']:,}</p>
+                                </div>
+                            """, unsafe_allow_html=True)
+    
+                            # שליפת הקישור מה-JSON המקורי
+                            original_plan = next((p for p in PLANS if p['company'] == best_plan['חברה'] and p['plan_name'] == best_plan['מסלול']), None)
+                            
+                            if original_plan and original_plan.get('link'):
+                                st.write("")
+                                st.link_button(f"מעבר להצטרפות באתר {best_plan['חברה']}", original_plan['link'], use_container_width=True)
+                                st.caption("לחיצה תעביר אותך לאתר הספק להשלמת הרישום")
+                            
+                            # כפתור לאיפוס (אם רוצים להעלות קובץ אחר)
+                            if st.button("בדיקה חדשה"):
+                                st.session_state.details_submitted = False
+                                st.rerun()
+    
+    
+    
+    
+    
+    
+                        
                     st.divider()
                     st.success(f"### מצאנו לך חיסכון שנתי של ₪{best_plan['חיסכון שנתי']:.2f}!")
                     st.info(f"המסלול המומלץ: **{best_plan['חברה']} - {best_plan['מסלול']}**")
